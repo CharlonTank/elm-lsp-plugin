@@ -21,27 +21,15 @@ npm install -g @elm-tooling/elm-language-server
 
 ## Installation
 
-### Option 1: Install from GitHub
-
 ```bash
-/plugin install elm-lsp@CharlonTank/elm-lsp-plugin
+# Add the marketplace
+claude plugin marketplace add https://github.com/CharlonTank/elm-lsp-plugin
+
+# Install the plugin
+claude plugin install elm-lsp@elm-marketplace
 ```
 
-### Option 2: Install locally
-
-```bash
-/plugin install /path/to/elm-lsp-plugin
-```
-
-### Option 3: Add to project
-
-Add to your project's `.claude/plugins.json`:
-
-```json
-{
-  "plugins": ["elm-lsp@CharlonTank/elm-lsp-plugin"]
-}
-```
+Then restart Claude Code.
 
 ## Usage
 
