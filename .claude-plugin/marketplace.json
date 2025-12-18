@@ -1,10 +1,19 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "elm-marketplace",
+  "version": "1.0.0",
   "description": "Elm plugins for Claude Code",
+  "owner": {
+    "name": "Charles-Andre Assus",
+    "email": "music@music.music"
+  },
   "plugins": [
     {
       "name": "elm-lsp",
-      "path": ".."
+      "description": "Elm Language Server integration - intelligent refactoring, go-to-definition, find references",
+      "version": "1.0.0",
+      "source": ".",
+      "category": "development"
     }
   ]
 }
