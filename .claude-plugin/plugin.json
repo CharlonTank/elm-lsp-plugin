@@ -1,0 +1,11 @@
+{
+  "name": "elm-lsp",
+  "description": "Elm Language Server integration for Claude Code - provides intelligent refactoring, go-to-definition, find references, and more",
+  "version": "1.0.0",
+  "author": "Charles-Andre Assus",
+  "repository": "https://github.com/CharlonTank/elm-lsp-plugin",
+  "keywords": ["elm", "lsp", "refactoring", "language-server"],
+  "requires": {
+    "elm-language-server": "Install with: npm install -g @elm-tooling/elm-language-server"
+  }
+}
