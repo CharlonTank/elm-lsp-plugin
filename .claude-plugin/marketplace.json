@@ -1,6 +1,6 @@
 {
-  "name": "elm-lsp-marketplace",
-  "description": "Elm Language Server plugins for Claude Code",
+  "name": "elm-marketplace",
+  "description": "Elm plugins for Claude Code",
   "plugins": [
     {
       "name": "elm-lsp",
