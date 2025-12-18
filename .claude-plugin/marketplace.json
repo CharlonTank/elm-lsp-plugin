@@ -1,0 +1,10 @@
+{
+  "name": "elm-lsp-marketplace",
+  "description": "Elm Language Server plugins for Claude Code",
+  "plugins": [
+    {
+      "name": "elm-lsp",
+      "path": ".."
+    }
+  ]
+}
