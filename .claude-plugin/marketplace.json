@@ -12,7 +12,7 @@
       "name": "elm-lsp",
       "description": "Elm Language Server integration - intelligent refactoring, go-to-definition, find references",
       "version": "1.0.0",
-      "source": ".",
+      "source": "./",
       "category": "development"
     }
   ]
