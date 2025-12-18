@@ -2,8 +2,7 @@
   "mcpServers": {
     "elm-lsp": {
       "command": "node",
-      "args": ["./server/index.mjs"],
-      "cwd": "${PLUGIN_DIR}"
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server/index.mjs"]
     }
   }
 }
