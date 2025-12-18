@@ -4,7 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { z } from 'zod';
 
@@ -504,6 +504,68 @@ server.tool('elm_prepare_rename', {
   };
 });
 
+// Helper function to apply workspace edits from LSP
+function applyWorkspaceEdit(edit) {
+  const changes = edit.changes || {};
+  const documentChanges = edit.documentChanges || [];
+  const appliedFiles = new Set();
+  const results = [];
+
+  // Helper to apply edits to a single file
+  function applyEditsToFile(filePath, edits) {
+    if (appliedFiles.has(filePath)) return; // Avoid double-applying
+    appliedFiles.add(filePath);
+
+    let content = readFileSync(filePath, 'utf8');
+    const lines = content.split('\n');
+
+    // Sort edits in reverse order (bottom to top) to preserve positions
+    const sortedEdits = [...edits].sort((a, b) => {
+      if (b.range.start.line !== a.range.start.line) {
+        return b.range.start.line - a.range.start.line;
+      }
+      return b.range.start.character - a.range.start.character;
+    });
+
+    for (const edit of sortedEdits) {
+      const { range, newText } = edit;
+      const startLine = range.start.line;
+      const endLine = range.end.line;
+      const startChar = range.start.character;
+      const endChar = range.end.character;
+
+      if (startLine === endLine) {
+        const line = lines[startLine];
+        lines[startLine] = line.substring(0, startChar) + newText + line.substring(endChar);
+      } else {
+        const startLineText = lines[startLine].substring(0, startChar);
+        const endLineText = lines[endLine].substring(endChar);
+        const newLines = (startLineText + newText + endLineText).split('\n');
+        lines.splice(startLine, endLine - startLine + 1, ...newLines);
+      }
+    }
+
+    writeFileSync(filePath, lines.join('\n'));
+    results.push({ file: filePath, edits: edits.length });
+  }
+
+  // Handle documentChanges format (preferred)
+  for (const docChange of documentChanges) {
+    if (docChange.textDocument && docChange.edits) {
+      const filePath = docChange.textDocument.uri.replace('file://', '');
+      applyEditsToFile(filePath, docChange.edits);
+    }
+  }
+
+  // Handle changes format (fallback)
+  for (const [uri, edits] of Object.entries(changes)) {
+    const filePath = uri.replace('file://', '');
+    applyEditsToFile(filePath, edits);
+  }
+
+  return results;
+}
+
 server.tool('elm_rename', {
   file_path: z.string(),
   line: z.number(),
@@ -512,8 +574,23 @@ server.tool('elm_rename', {
 }, async ({ file_path, line, character, newName }) => {
   console.error(`✏️ Calling rename for ${file_path}:${line}:${character} -> ${newName}`);
   const result = await lspClient.rename(file_path, line, character, newName);
+
+  if (result && (result.changes || result.documentChanges)) {
+    const applied = applyWorkspaceEdit(result);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: true,
+          message: `Renamed to "${newName}"`,
+          filesModified: applied
+        }, null, 2)
+      }]
+    };
+  }
+
   return {
-    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    content: [{ type: 'text', text: JSON.stringify({ success: false, result }, null, 2) }]
   };
 });
 
