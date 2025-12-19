@@ -514,7 +514,25 @@ server.tool('elm_code_actions', {
   end_char: z.number().describe('End character (0-indexed)')
 }, async ({ file_path, start_line, start_char, end_line, end_char }) => {
   console.error(`🔨 Calling codeAction for ${file_path}:${start_line}:${start_char}-${end_line}:${end_char}`);
-  const result = await lspClient.codeAction(file_path, start_line, start_char, end_line, end_char);
+
+  // First, get diagnostics for the file
+  const allDiagnostics = await lspClient.getDiagnostics(file_path);
+
+  // Filter diagnostics that overlap with the requested range
+  const relevantDiagnostics = allDiagnostics.filter(d => {
+    const dStart = d.range.start;
+    const dEnd = d.range.end;
+    // Check if diagnostic range overlaps with requested range
+    const overlaps = !(dEnd.line < start_line ||
+                       (dEnd.line === start_line && dEnd.character < start_char) ||
+                       dStart.line > end_line ||
+                       (dStart.line === end_line && dStart.character > end_char));
+    return overlaps;
+  });
+
+  console.error(`📋 Found ${relevantDiagnostics.length} relevant diagnostics out of ${allDiagnostics.length} total`);
+
+  const result = await lspClient.codeAction(file_path, start_line, start_char, end_line, end_char, relevantDiagnostics);
   return {
     content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
   };
@@ -529,7 +547,22 @@ server.tool('elm_apply_code_action', {
   action_title: z.string().describe('Title of the code action to apply')
 }, async ({ file_path, start_line, start_char, end_line, end_char, action_title }) => {
   console.error(`🔨 Applying code action "${action_title}" for ${file_path}`);
-  const actions = await lspClient.codeAction(file_path, start_line, start_char, end_line, end_char);
+
+  // First, get diagnostics for the file
+  const allDiagnostics = await lspClient.getDiagnostics(file_path);
+
+  // Filter diagnostics that overlap with the requested range
+  const relevantDiagnostics = allDiagnostics.filter(d => {
+    const dStart = d.range.start;
+    const dEnd = d.range.end;
+    const overlaps = !(dEnd.line < start_line ||
+                       (dEnd.line === start_line && dEnd.character < start_char) ||
+                       dStart.line > end_line ||
+                       (dStart.line === end_line && dStart.character > end_char));
+    return overlaps;
+  });
+
+  const actions = await lspClient.codeAction(file_path, start_line, start_char, end_line, end_char, relevantDiagnostics);
 
   const action = actions?.find(a => a.title === action_title);
   if (!action) {
