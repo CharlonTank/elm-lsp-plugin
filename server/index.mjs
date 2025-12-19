@@ -312,9 +312,23 @@ class ElmLSPClient extends EventEmitter {
   async documentSymbol(filePath) {
     await this.ensureProjectInitialized(filePath);
     await this.ensureDocumentOpen(filePath);
-    
+
     return this.sendRequest('textDocument/documentSymbol', {
       textDocument: { uri: `file://${filePath}` }
+    });
+  }
+
+  async codeAction(filePath, startLine, startChar, endLine, endChar, diagnostics = []) {
+    await this.ensureProjectInitialized(filePath);
+    await this.ensureDocumentOpen(filePath);
+
+    return this.sendRequest('textDocument/codeAction', {
+      textDocument: { uri: `file://${filePath}` },
+      range: {
+        start: { line: startLine, character: startChar },
+        end: { line: endLine, character: endChar }
+      },
+      context: { diagnostics }
     });
   }
 
@@ -489,6 +503,50 @@ server.tool('elm_diagnostics', {
   const result = await lspClient.getDiagnostics(file_path);
   return {
     content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+  };
+});
+
+server.tool('elm_code_actions', {
+  file_path: z.string(),
+  start_line: z.number().describe('Start line (0-indexed)'),
+  start_char: z.number().describe('Start character (0-indexed)'),
+  end_line: z.number().describe('End line (0-indexed)'),
+  end_char: z.number().describe('End character (0-indexed)')
+}, async ({ file_path, start_line, start_char, end_line, end_char }) => {
+  console.error(`🔨 Calling codeAction for ${file_path}:${start_line}:${start_char}-${end_line}:${end_char}`);
+  const result = await lspClient.codeAction(file_path, start_line, start_char, end_line, end_char);
+  return {
+    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+  };
+});
+
+server.tool('elm_apply_code_action', {
+  file_path: z.string(),
+  start_line: z.number(),
+  start_char: z.number(),
+  end_line: z.number(),
+  end_char: z.number(),
+  action_title: z.string().describe('Title of the code action to apply')
+}, async ({ file_path, start_line, start_char, end_line, end_char, action_title }) => {
+  console.error(`🔨 Applying code action "${action_title}" for ${file_path}`);
+  const actions = await lspClient.codeAction(file_path, start_line, start_char, end_line, end_char);
+
+  const action = actions?.find(a => a.title === action_title);
+  if (!action) {
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ success: false, error: `Action "${action_title}" not found`, available: actions?.map(a => a.title) }, null, 2) }]
+    };
+  }
+
+  if (action.edit) {
+    const applied = applyWorkspaceEdit(action.edit);
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ success: true, action: action_title, filesModified: applied }, null, 2) }]
+    };
+  }
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ success: false, error: 'Action has no edit', action }, null, 2) }]
   };
 });
 
