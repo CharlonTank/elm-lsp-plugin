@@ -38,6 +38,7 @@ class ElmLSPClient extends EventEmitter {
     this.isInitialized = false;
     this.openDocuments = new Set();
     this.currentProjectRoot = null;
+    this.diagnosticsCache = new Map(); // uri -> diagnostics
   }
 
   async start() {
@@ -202,6 +203,10 @@ class ElmLSPClient extends EventEmitter {
         request.resolve(message.result);
       }
     } else if (message.method) {
+      // Cache diagnostics as they come in
+      if (message.method === 'textDocument/publishDiagnostics' && message.params) {
+        this.diagnosticsCache.set(message.params.uri, message.params.diagnostics || []);
+      }
       this.emit('notification', message.method, message.params);
     }
   }
@@ -369,24 +374,32 @@ class ElmLSPClient extends EventEmitter {
   async getDiagnostics(filePath) {
     await this.ensureProjectInitialized(filePath);
     await this.ensureDocumentOpen(filePath);
-    
+
+    const uri = `file://${filePath}`;
+
+    // Check cache first
+    if (this.diagnosticsCache.has(uri)) {
+      return this.diagnosticsCache.get(uri);
+    }
+
+    // Trigger didSave and wait for diagnostics
     this.sendNotification('textDocument/didSave', {
-      textDocument: { uri: `file://${filePath}` }
+      textDocument: { uri }
     });
 
     return new Promise((resolve) => {
       const handler = (method, params) => {
-        if (method === 'textDocument/publishDiagnostics' && 
-            params.uri === `file://${filePath}`) {
+        if (method === 'textDocument/publishDiagnostics' && params.uri === uri) {
           this.removeListener('notification', handler);
           resolve(params.diagnostics);
         }
       };
       this.on('notification', handler);
-      
+
       setTimeout(() => {
         this.removeListener('notification', handler);
-        resolve([]);
+        // Return cached if available, empty otherwise
+        resolve(this.diagnosticsCache.get(uri) || []);
       }, 5000);
     });
   }
@@ -531,8 +544,10 @@ server.tool('elm_code_actions', {
   });
 
   console.error(`📋 Found ${relevantDiagnostics.length} relevant diagnostics out of ${allDiagnostics.length} total`);
+  console.error(`📋 Relevant diagnostics: ${JSON.stringify(relevantDiagnostics, null, 2)}`);
 
   const result = await lspClient.codeAction(file_path, start_line, start_char, end_line, end_char, relevantDiagnostics);
+  console.error(`📋 Code action result: ${JSON.stringify(result, null, 2)}`);
   return {
     content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
   };
