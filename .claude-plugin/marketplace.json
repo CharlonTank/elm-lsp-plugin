@@ -14,6 +14,13 @@
       "version": "1.0.0",
       "source": "./",
       "category": "development"
+    },
+    {
+      "name": "elm-lsp-rust",
+      "description": "Fast Elm Language Server (Rust) - tree-sitter powered refactoring with 10x faster parsing",
+      "version": "0.1.0",
+      "source": "./plugins/elm-lsp-rust",
+      "category": "development"
     }
   ]
 }
