@@ -14,6 +14,7 @@ Activate this skill when the user asks to:
 - **Find all references** to a symbol
 - **Go to definition** of a function or type
 - **Get type information** for a symbol
+- **Remove a variant** from a custom type (union type)
 
 ## Available MCP Tools
 
@@ -79,12 +80,76 @@ Check if a symbol can be renamed before attempting.
 - `line`: 0-indexed line number
 - `character`: 0-indexed character position
 
+### mcp__elm-lsp__elm_prepare_remove_variant
+Check if a variant can be removed from a custom type. Returns variant info, usage count, and other variants.
+
+**Parameters:**
+- `file_path`: Absolute path to the Elm file containing the type definition
+- `line`: 0-indexed line number of the variant name
+- `character`: 0-indexed character position within the variant name
+
+**Response includes:**
+- `variantName`: Name of the variant
+- `typeName`: Name of the parent type
+- `otherVariants`: Array of other variant names (alternatives for replacement)
+- `usagesCount`: Number of places the variant is used
+- `canRemove`: Whether removal is allowed (false if it's the only variant)
+
+### mcp__elm-lsp__elm_remove_variant
+Remove a variant from a custom type. Will fail if the variant is used anywhere, showing blocking usages with call chain context.
+
+**Parameters:**
+- `file_path`: Absolute path to the Elm file containing the type definition
+- `line`: 0-indexed line number of the variant name
+- `character`: 0-indexed character position within the variant name
+
+**On success:** Removes the variant line from the type definition.
+
+**On failure:** Returns detailed blocking usages with:
+- `function_name`: The function containing the usage
+- `module_name`: The module name
+- `call_chain`: Path from the function up to entry points (view, update, etc.) with `[ENTRY]` markers
+- `otherVariants`: Available variants to use as replacements
+
 ## Workflow for Renaming
 
 1. **Find the symbol location**: Use Grep to find where the symbol is defined
 2. **Prepare rename**: Call `mcp__elm-lsp__elm_prepare_rename` to verify the symbol can be renamed
 3. **Execute rename**: Call `mcp__elm-lsp__elm_rename` with the new name
 4. **Verify**: Run `lamdera make src/Frontend.elm src/Backend.elm` to ensure compilation succeeds
+
+## Workflow for Removing a Variant
+
+1. **Find the variant**: Locate the type definition and the variant you want to remove
+2. **Check removability**: Call `mcp__elm-lsp__elm_prepare_remove_variant` to see usage count and other variants
+3. **Attempt removal**: Call `mcp__elm-lsp__elm_remove_variant`
+4. **If blocked**: The response shows all blocking usages with context:
+   - Each usage shows the function name and module
+   - The call chain shows how it connects to app entry points (view, update, etc.)
+   - `otherVariants` shows what you can replace it with
+5. **Fix blocking usages**: Replace the variant with one of the `otherVariants` in each blocking location
+6. **Retry removal**: Call `mcp__elm-lsp__elm_remove_variant` again
+7. **Verify**: Run `lamdera make src/Frontend.elm src/Backend.elm` to ensure compilation succeeds
+
+**Example blocking response:**
+```
+Cannot remove variant 'EventCancelled' from type CancellationStatus
+Reason: Variant 'EventCancelled' is used in 5 place(s).
+
+Other variants you can use instead: [EventUncancelled]
+
+Blocking usages:
+  1. Event.isCancelled:156
+     Context: "Just ( EventCancelled, _ ) ->"
+     Call chain:
+       → Event.isCancelled:156
+         → Backend.updateFromFrontend:727 [ENTRY]
+```
+
+This tells you:
+- The variant is used in `isCancelled` function at line 156
+- That function is called from `updateFromFrontend` (an entry point)
+- You can replace `EventCancelled` with `EventUncancelled`
 
 ## Important Notes
 
