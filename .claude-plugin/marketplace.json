@@ -9,13 +9,6 @@
   },
   "plugins": [
     {
-      "name": "elm-lsp",
-      "description": "Elm Language Server integration - intelligent refactoring, go-to-definition, find references",
-      "version": "1.0.0",
-      "source": "./",
-      "category": "development"
-    },
-    {
       "name": "elm-lsp-rust",
       "description": "Fast Elm Language Server (Rust) - completion, hover, go-to-definition, find references, workspace symbols, rename, code actions, move function, file rename/move, and smart variant removal",
       "version": "0.3.1",
