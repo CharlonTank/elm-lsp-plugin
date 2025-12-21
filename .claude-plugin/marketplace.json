@@ -17,9 +17,12 @@
     },
     {
       "name": "elm-lsp-rust",
-      "description": "Fast Elm Language Server (Rust) - tree-sitter powered refactoring with 10x faster parsing",
-      "version": "0.1.0",
-      "source": "./plugins/elm-lsp-rust",
+      "description": "Fast Elm Language Server (Rust) - tree-sitter powered refactoring with move function and smart variant removal",
+      "version": "0.2.0",
+      "source": {
+        "source": "github",
+        "repo": "CharlonTank/elm-lsp-rust"
+      },
       "category": "development"
     }
   ]
