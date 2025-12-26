@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "elm-lsp-rust",
-      "description": "Fast Elm Language Server (Rust) - completion, hover, go-to-definition, find references, workspace symbols, rename, code actions, move function, file rename/move, and smart variant removal",
+      "description": "Fast Elm Language Server (Rust) - completion, hover, go-to-definition, find references, workspace symbols, rename, code actions, move function, file rename/move, smart variant removal, and field removal",
       "source": {
         "source": "github",
         "repo": "CharlonTank/elm-lsp-rust"
